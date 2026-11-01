@@ -1,0 +1,42 @@
+name: Publish support site
+# Publishes docs/site (home, privacy policy, support) to GitHub Pages.
+# One-time setup: Settings > Pages > Source: GitHub Actions, and Settings > Secrets and variables > Actions >
+# Variables: SUPPORT_EMAIL and DEVELOPER_NAME. The privacy policy URL is then
+# https://<user>.github.io/<repo>/privacy.html and the support URL .../support.html.
+on:
+  push:
+    branches: [ main, master ]
+    paths: [ 'docs/site/**', '.github/workflows/pages.yml' ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fill in contact details
+        env:
+          SUPPORT_EMAIL: ${{ vars.SUPPORT_EMAIL }}
+          DEVELOPER_NAME: ${{ vars.DEVELOPER_NAME }}
+        run: |
+          test -n "$SUPPORT_EMAIL" || { echo "Set the SUPPORT_EMAIL repository variable"; exit 1; }
+          test -n "$DEVELOPER_NAME" || { echo "Set the DEVELOPER_NAME repository variable"; exit 1; }
+          sed -i "s|{{SUPPORT_EMAIL}}|$SUPPORT_EMAIL|g; s|{{DEVELOPER}}|$DEVELOPER_NAME|g" docs/site/*.html
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/site
+      - id: deployment
+        uses: actions/deploy-pages@v4
